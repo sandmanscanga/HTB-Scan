@@ -2,6 +2,18 @@
 import os
 
 
+def udp_scan(outdir, target, ports):
+    """Runs the udp scan against specified number of top ports"""
+
+    command = f"nmap -sU --top-ports {ports} --open -v " \
+              f"-oN {outdir}/udp_top_{ports}.nmap {target}"
+
+    print(f"[*] Executing udp scan on top {ports} " \
+           "ports with the following command...")
+    print(command)
+    os.system(command)
+
+
 def enum_scan(outdir, target):
     """Runs the more comprehensive enum scan for nmap"""
 
@@ -9,18 +21,6 @@ def enum_scan(outdir, target):
               f"--min-rate 4500 --max-rtt-timeout 1500ms {target}"
 
     print("[*] Executing enum scan with the following command...")
-    print(command)
-    os.system(command)
-
-
-def udp_scan(outdir, target, ports):
-    """Runs the udp scan against specified number of top ports"""
-
-    command = f"nmap -sU --top-ports {ports} -v " \
-              f"-oN {outdir}/udp_top_{ports}.nmap {target}"
-
-    print(f"[*] Executing udp scan on top {ports} " \
-           "ports with the following command...")
     print(command)
     os.system(command)
 
@@ -85,7 +85,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "-u", "--udp",
-        required=False, type=int,
+        required=False, type=int, nargs='?', const=100,
         help="specify udp flag with number of top ports to scan"
     )
     args = parser.parse_args()
