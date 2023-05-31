@@ -1,8 +1,9 @@
-"""Module for scanning a HTB machine given the HTB-Admin package is installed"""
+"""Module to scan an HTB machine, depends on the HTB-Admin package."""
 import os
+from argparse import ArgumentParser, Namespace
 
 
-def udp_scan(outdir, target, ports):
+def udp_scan(outdir: str, target: str, ports: str) -> None:
     """Runs the udp scan against specified number of top ports"""
 
     command = f"nmap -sU --top-ports {ports} --open -v " \
@@ -14,7 +15,7 @@ def udp_scan(outdir, target, ports):
     os.system(command)
 
 
-def enum_scan(outdir, target):
+def enum_scan(outdir: str, target: str) -> None:
     """Runs the more comprehensive enum scan for nmap"""
 
     command = f"nmap -p- -sV -sC -v -oN {outdir}/enum_all.nmap " \
@@ -25,7 +26,7 @@ def enum_scan(outdir, target):
     os.system(command)
 
 
-def nmap_scan(outdir, target):
+def nmap_scan(outdir: str, target: str) -> None:
     """Runs the full panel nmap scan against target host"""
 
     stealth_scan = f"nmap -sS -p- -oN {outdir}/open_ports.nmap {target}"
@@ -42,7 +43,32 @@ def nmap_scan(outdir, target):
     os.system(command)
 
 
-def main(args):
+def adjust_permissions(outdir: str) -> None:
+    """Adjust the permission for scan results to user's permission."""
+
+    uid = os.environ.get("SUDO_UID", 0)
+    gid = os.environ.get("SUDO_UID", 0)
+ 
+    os.system(f"chown -R {uid}:{gid} {outdir}")
+
+
+def execute_scan(outdir: str,
+                 target: str,
+                 args: Namespace
+                 ) -> None:
+    """Execute the corresponding Nmap scan based on cmdline paramaters."""
+
+    if args.enum is True:
+        enum_scan(outdir, target)
+    elif args.udp is not None:
+        udp_scan(outdir, target, args.udp)
+    else:
+        nmap_scan(outdir, target)
+
+    adjust_permissions(outdir)
+
+
+def main(args: Namespace) -> None:
     target = args.target
     outdir = args.outdir.rstrip("/")
 
@@ -54,19 +80,12 @@ def main(args):
                "does not exist, creating it now.")
         os.makedirs(outdir)
 
-    if args.enum is True:
-        enum_scan(outdir, target)
-    elif args.udp is not None:
-        udp_scan(outdir, target, args.udp)
-    else:
-        nmap_scan(outdir, target)
+    execute_scan(outdir, target, args)
 
     print("[!] Finished running nmap scans.")
 
 
 if __name__ == "__main__":
-    import argparse
-
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-t", "--target",
@@ -89,4 +108,8 @@ if __name__ == "__main__":
         help="specify udp flag with number of top ports to scan"
     )
     args = parser.parse_args()
-    main(args)
+
+    if not os.getuid():
+        main(args)
+    else:
+        raise PermissionError("Must be run as root!")
